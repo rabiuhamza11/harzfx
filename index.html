@@ -31,9 +31,6 @@ body { background:#0a0e1a; color:#fff; }
 .market-badge.parallel { background:#f59e0b; color:#000; }
 .market-badge.official { background:#3b82f6; color:#fff; }
 .market-badge.black_market { background:#ef4444; color:#fff; }
-.converter { display:flex; gap:10px; align-items:center; }
-.converter input { flex:1; }
-.converter .arrow { font-size:20px; color:#8892a6; }
 .input { width:100%; padding:12px; background:#0a0e1a; border:1px solid #2a2f3e; border-radius:10px; color:#fff; font-size:14px; margin-bottom:10px; }
 .input:focus { border-color:#f59e0b; outline:none; }
 .select { width:100%; padding:12px; background:#0a0e1a; border:1px solid #2a2f3e; border-radius:10px; color:#fff; font-size:14px; margin-bottom:10px; }
@@ -50,9 +47,9 @@ body { background:#0a0e1a; color:#fff; }
 </div>
 <div class="container">
 <div class="tabs">
-<div class="tab active" onclick="switchTab('rates')">Live Rates</div>
-<div class="tab" onclick="switchTab('convert')">Convert</div>
-<div class="tab" onclick="switchTab('p2p')">P2P Trade</div>
+<div class="tab active" onclick="switchTab('rates',this)">Live Rates</div>
+<div class="tab" onclick="switchTab('convert',this)">Convert</div>
+<div class="tab" onclick="switchTab('p2p',this)">P2P Trade</div>
 </div>
 <div id="tab-rates">
 <div class="card">
@@ -101,14 +98,14 @@ body { background:#0a0e1a; color:#fff; }
 </div>
 <script>
 const API='https://superagent-2286fb2f.base44.app/functions/harzFx';
-function switchTab(t){document.querySelectorAll('.tab').forEach((e,i)=>{e.classList.toggle('active',i==['rates','convert','p2p'].indexOf(t))});['rates','convert','p2p'].forEach(x=>{document.getElementById('tab-'+x).style.display=x==t?'block':'none'})}
+function post(data){return fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)}).then(r=>r.json())}
+function switchTab(t,el){document.querySelectorAll('.tab').forEach(e=>e.classList.remove('active'));el.classList.add('active');['rates','convert','p2p'].forEach(x=>{document.getElementById('tab-'+x).style.display=x==t?'block':'none'})}
 function fmt(n,d){return Number(n||0).toLocaleString(undefined,{maximumFractionDigits:d||2})}
 async function loadRates(){
 try{
-const r=await fetch(API+'?action=rates');
-const d=await r.json();
+const d=await post({action:'rates'});
 const rates=d.rates||[];
-if(!rates.length){document.getElementById('rates-list').innerHTML='<p style="color:#8892a6; text-align:center">No rates available yet.</p>';return}
+if(!rates.length){document.getElementById('rates-list').innerHTML='<p style="color:#8892a6; text-align:center">No rates available.</p>';return}
 document.getElementById('rates-list').innerHTML=rates.map(rt=>{
 const change=rt.daily_change||0;
 const chgClass=change>=0?'up':'down';
@@ -125,9 +122,8 @@ const to=document.getElementById('convTo').value;
 const market=document.getElementById('convMarket').value;
 if(!amt){alert('Enter amount');return}
 try{
-const r=await fetch(API+`?action=convert&amount=${amt}&from=${from}&to=${to}&market=${market}`);
-const d=await r.json();
-if(d.result){
+const d=await post({action:'convert',amount:amt,from:from,to:to,market:market});
+if(d.result!==undefined){
 document.getElementById('conv-result').style.display='block';
 document.getElementById('conv-result-amount').textContent=fmt(d.result,2)+' '+to;
 document.getElementById('conv-result-rate').textContent=`Rate: 1 ${from} = ₦${fmt(d.rate)} (${market})`;
@@ -136,8 +132,7 @@ document.getElementById('conv-result-rate').textContent=`Rate: 1 ${from} = ₦${
 }
 async function postTrade(){
 const body={action:'create_trade',trade_type:document.getElementById('tradeType').value,currency_from:document.getElementById('tradeCurrency').value,currency_to:'NGN',amount_from:Number(document.getElementById('tradeAmount').value),user_phone:document.getElementById('tradePhone').value,user_name:document.getElementById('tradeName').value};
-const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-const d=await r.json();
+const d=await post(body);
 if(d.id){alert('Trade posted! We will match you with a verified trader.')}else{alert('Error: '+(d.error||'Unknown'))}
 }
 loadRates()
